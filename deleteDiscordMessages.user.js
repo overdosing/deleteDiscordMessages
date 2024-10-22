@@ -2,16 +2,16 @@
 // @name            Undiscord
 // @description     Delete all messages in a Discord channel or DM (Bulk deletion)
 // @version         5.2.3
-// @author          victornpb
-// @homepageURL     https://github.com/victornpb/undiscord
-// @supportURL      https://github.com/victornpb/undiscord/discussions
+// @author          victornpb, saint
+// @homepageURL     https://github.com/saint/undiscord
+// @supportURL      https://github.com/saint/undiscord/discussions
 // @match           https://*.discord.com/app
 // @match           https://*.discord.com/channels/*
 // @match           https://*.discord.com/login
 // @license         MIT
-// @namespace       https://github.com/victornpb/deleteDiscordMessages
+// @namespace       https://github.com/saint/deleteDiscordMessages
 // @icon            https://victornpb.github.io/undiscord/images/icon128.png
-// @downloadURL     https://raw.githubusercontent.com/victornpb/deleteDiscordMessages/master/deleteDiscordMessages.user.js
+// @downloadURL     
 // @contributionURL https://www.buymeacoffee.com/vitim
 // @grant           none
 // ==/UserScript==
@@ -127,7 +127,7 @@
 [name^="grab-"] { position: absolute; --size: 6px; --corner-size: 16px; --offset: -1px; z-index: 9; }
 [name^="grab-"]:hover{ background: rgba(128,128,128,0.1); }
 [name="grab-t"] { top: 0px; left: var(--corner-size); right: var(--corner-size); height: var(--size); margin-top: var(--offset); cursor: ns-resize; }
-[name="grab-r"] { top: var(--corner-size); bottom: var(--corner-size); right: 0px; width: var(--size); margin-right: var(--offset); 
+[name="grab-r"] { top: var(--corner-size); bottom: var(--corner-size); right: 0px; width: var(--size); margin-right: var(--offset);
   cursor: ew-resize; }
 [name="grab-b"] { bottom: 0px; left: var(--corner-size); right: var(--corner-size); height: var(--size); margin-bottom: var(--offset); cursor: ns-resize; }
 [name="grab-l"] { top: var(--corner-size); bottom: var(--corner-size); left: 0px; width: var(--size); margin-left: var(--offset); cursor: ew-resize; }
@@ -365,7 +365,7 @@
             <div></div>
             <div class="info">
                 Undiscord {{VERSION}}
-                <br> victornpb
+                <br> saint
             </div>
         </div>
         <div class="main col">
@@ -430,8 +430,8 @@
 
 	/**
 	 * Delete all messages in a Discord channel or DM
-	 * @author Victornpb <https://www.github.com/victornpb>
-	 * @see https://github.com/victornpb/undiscord
+	 * @author saint <https://www.github.com/overdosing>
+	 * @see https://github.com/overdosing/undiscord
 	 */
 	class UndiscordCore {
 
@@ -500,31 +500,36 @@
 
 	  /** Automate the deletion process of multiple channels */
 	  async runBatch(queue) {
-	    if (this.state.running) return log.error('Already running!');
+  if (this.state.running) return log.error('Already running!');
 
-	    log.info(`Runnning batch with queue of ${queue.length} jobs`);
-	    for (let i = 0; i < queue.length; i++) {
-	      const job = queue[i];
-	      log.info('Starting job...', `(${i + 1}/${queue.length})`);
+  log.info(`Running batch with queue of ${queue.length} jobs`);
+  for (let i = 0; i < queue.length; i++) {
+    const job = queue[i];
+    log.info('Starting job...', `(${i + 1}/${queue.length})`);
 
-	      // set options
-	      this.options = {
-	        ...this.options, // keep current options
-	        ...job, // override with options for that job
-	      };
+    // set options
+    this.options = {
+      ...this.options, // keep current options
+      ...job, // override with options for that job
+    };
 
-	      await this.run(true);
-	      if (!this.state.running) break;
+    try {
+      await this.run(true);
+    } catch (error) {
+      log.error('Error in job', `(${i + 1}/${queue.length})`, error);
+    }
 
-	      log.info('Job ended.', `(${i + 1}/${queue.length})`);
-	      this.resetState();
-	      this.options.askForConfirmation = false;
-	      this.state.running = true; // continue running
-	    }
+    if (!this.state.running) break;
 
-	    log.info('Batch finished.');
-	    this.state.running = false;
-	  }
+    log.info('Job ended.', `(${i + 1}/${queue.length})`);
+    this.resetState();
+    this.options.askForConfirmation = false;
+    this.state.running = true; // continue running
+  }
+
+  log.info('Batch finished.');
+  this.state.running = false;
+}
 
 	  /** Start the deletion process */
 	  async run(isJob = false) {
@@ -802,43 +807,43 @@
 	      return 'FAILED';
 	    }
 
-	    if (!resp.ok) {
-	      if (resp.status === 429) {
-	        // deleting messages too fast
-	        const w = (await resp.json()).retry_after * 1000;
-	        this.stats.throttledCount++;
-	        this.stats.throttledTotalTime += w;
-	        this.options.deleteDelay = w; // increase delay
-	        log.warn(`Being rate limited by the API for ${w}ms! Adjusted delete delay to ${this.options.deleteDelay}ms.`);
-	        this.printStats();
-	        log.verb(`Cooling down for ${w * 2}ms before retrying...`);
-	        await wait(w * 2);
-	        return 'RETRY';
-	      } else {
-	        const body = await resp.text();
+	if (!resp.ok) {
+    if (resp.status === 429) {
+        // deleting messages too fast
+        const w = (await resp.json()).retry_after * 1000;
+        this.stats.throttledCount++;
+        this.stats.throttledTotalTime += w;
+        this.options.deleteDelay = w; // increase delay
+        log.warn(`Being rate limited by the API for ${w}ms! Adjusted delete delay to ${this.options.deleteDelay}ms.`);
+        this.printStats();
+        log.verb(`Cooling down for ${w * 2}ms before retrying...`);
+        await wait(w * 2);
+        return 'RETRY';
+    } else {
+        const body = await resp.text();
 
-	        try {
-	          const r = JSON.parse(body);
+        try {
+            const r = JSON.parse(body);
 
-	          if (resp.status === 400 && r.code === 50083) {
-	            // 400 can happen if the thread is archived (code=50083)
-	            // in this case we need to "skip" this message from the next search
-	            // otherwise it will come up again in the next page (and fail to delete again)
-	            log.warn('Error deleting message (Thread is archived). Will increment offset so we don\'t search this in the next page...');
-	            this.state.offset++;
-	            this.state.failCount++;
-	            return 'FAIL_SKIP'; // Failed but we will skip it next time
-	          }
+            if (resp.status === 400 && r.code === 50083) {
+                // 400 can happen if the thread is archived (code=50083)
+                // in this case we need to "skip" this message from the next search
+                // otherwise it will come up again in the next page (and fail to delete again)
+                log.warn('Error deleting message (Thread is archived). Will increment offset so we don\'t search this in the next page...');
+                this.state.offset++;
+                this.state.failCount++;
+                return 'FAIL_SKIP'; // Failed but we will skip it next time
+            }
 
-	          log.error(`Error deleting message, API responded with status ${resp.status}!`, r);
-	          log.verb('Related object:', redact(JSON.stringify(message)));
-	          this.state.failCount++;
-	          return 'FAILED';
-	        } catch (e) {
-	          log.error(`Fail to parse JSON. API responded with status ${resp.status}!`, body);
-	        }
-	      }
-	    }
+            log.error(`Error deleting message, API responded with status ${resp.status}!`, r);
+            log.verb('Related object:', redact(JSON.stringify(message)));
+            this.state.failCount++;
+            return 'FAILED';
+        } catch (e) {
+            log.error(`Fail to parse JSON. API responded with status ${resp.status}!`, body);
+        }
+    }
+}
 
 	    this.state.delCount++;
 	    return 'OK';
@@ -1217,8 +1222,8 @@ body.undiscord-pick-message.after [id^="message-content-"]:hover::after {
 	// -------------------------- User interface ------------------------------- //
 
 	// links
-	const HOME = 'https://github.com/victornpb/undiscord';
-	const WIKI = 'https://github.com/victornpb/undiscord/wiki';
+	const HOME = 'https://github.com/overdosing/undiscord';
+	const WIKI = 'https://github.com/overdosing/undiscord/wiki';
 
 	const undiscordCore = new UndiscordCore();
 	messagePicker.init();
@@ -1464,14 +1469,14 @@ body.undiscord-pick-message.after [id^="message-content-"]:hover::after {
 	  //advanced
 	  const searchDelay = parseInt($('input#searchDelay').value.trim());
 	  const deleteDelay = parseInt($('input#deleteDelay').value.trim());
-	 
+
 	  // token
 	  const authToken = $('input#token').value.trim() || fillToken();
 	  if (!authToken) return; // get token already logs an error.
-	  
+
 	  // validate input
 	  if (!guildId) return log.error('You must fill the "Server ID" field!');
-	 
+
 	  // clear logArea
 	  ui.logArea.innerHTML = '';
 
